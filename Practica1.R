@@ -225,7 +225,7 @@ library(metR)
 library(RColorBrewer)
 
 
-# problema con las latitudes: quedaban muy desfazadas de las posiciones reales
+# problema con las latitudes: quedaban muy desfasadas de las posiciones reales
 # algunas coordenadas fueron corregidas por ejemplo de -30,7 --> -30,5
 # si bien antes pudo leer bien los valores con "," en este caso no lo hacia, las coordenadas 
 # fuerpon pasadas a un txt con "." en lugar de ","

@@ -85,44 +85,7 @@ ctg_test(tabla = trigo, alpha = 0.05, totales = T)
 
 
 ## 5 REVISAR
-library(readxl)
-datos = as.data.frame(read_xlsx(paste(ruta_datos, "/Datos_pp_ej5_P3.xlsx", sep = "")
-                                ,sheet = 1 ))
-
-
-
-# periodos en comun
-# mdp - cba, filas: 109:1020
-# ros - cba, filas: 13:1020
-# con - cb, filas: 570:1008
-
-datos[min(which(!is.na(datos[,5]))):max(which(!is.na(datos[,3]))),3]
-
-per = list(); per[[1]] = c(109:1020)
-per[[3]] = c(13:1020); per[[4]] = c(570:1008)
-
-tabla = data.frame(Estaciones = NA, Período = NA, Cant.datos = NA, chi.sq = NA, C = NA, significancia = NA)
-
-aux = matrix(data = NA, nrow = 5, ncol = 2)
-
-for(i in c(1,3,4)){
-  
-  for(q in 1:5){
-    
-    aux[q,1] = length(which(datos[per[[i]],4] == q)) #cordoba
-    aux[q,2] = length(which(datos[per[[i]],2+i] == q)) #
-    
-  }
-
-  ctg = ctg_test(tabla = aux, alpha = 0.05)
-  
-  tabla[i,2] = paste(min(per[[i]]), "-", max(per[[i]]))
-  tabla[i,3] = length(per[[i]])
-  tabla[[i,4]] = ctg[1]; tabla[[i,5]] = ctg[[3]]
-}
-
-
-
+###---> EbntregaE3.Rmd
 
 
 

@@ -1,0 +1,227 @@
+---
+title: "Ejercicio para entregar 3"
+author: "Luciano Andrian"
+output:
+  pdf_document: 
+    keep_tex: yes
+---
+
+  <style>
+p.caption {
+  font-size: 0.9em;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r librarias, echo=FALSE}
+library(ggplot2)
+library(readxl)
+```
+
+```{r rutas, echo=FALSE}
+ruta_datos = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/Entregas/"
+system(command = "mkdir Entregas/Salidas_Entregas") 
+ruta_salidas = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/Entregas/Salidas_Entregas" 
+```
+
+
+## A. Período en común de las 4 estaciones
+
+Tomo el período en común mas largo entre las 4 estaciones sin datos faltantes: Enero 1974 - Diciembre 2009
+
+```{r, echo=FALSE}
+datos = as.data.frame(read_xlsx(paste(ruta_datos, "/Datos_pp_ej5_P3.xlsx", sep = "")
+                                ,sheet = 1 ))
+
+```
+
+```{r}
+per = c(577:1008) # período en comun
+datos = datos[per,]
+head(datos)
+```
+
+## B. Tablas de contigencia entre la estación de Cordoba y las demás.
+
+```{r}
+tablas.ctg = array(data = NA, dim = c(5,5,3))
+
+# Selecciono y cuento la cantidad de cada quintil en cada estación
+
+for(i in 1:5){
+  
+  aux = datos[which(datos$Córdoba == i),]
+  
+  for(c in 1:5){
+    
+    tablas.ctg[c,i,1] = length(which(aux$`Mar del Plata` == c))
+    tablas.ctg[c,i,2] = length(which(aux$Rosario == c))
+    tablas.ctg[c,i,3] = length(which(aux$Concordia == c))
+    
+  }
+}
+
+```
+
+```{r, echo=F, cap.fig = "Tablas de contingencia para los quintiles de la precipitación entre Cordoba y Mar Del Plata (arriba), Cordoba y Rosario (centro) y Cordoba y Concordia (abajo)"}
+# aux = tablas.ctg[,,1]
+# row.names(aux) = c("Cordoba", "MDP")
+# print(aux)
+# 
+# aux = tablas.ctg[,,2]
+# row.names(aux) = c("Cordoba", "Rosario")
+# print(aux)
+# 
+# aux = tablas.ctg[,,3]
+# row.names(aux) = c("Cordoba", "Concordia")
+# print(aux)
+
+# Tablas de contingencia, estaciones en las filas y quinitiles en las columnas.
+
+```
+
+
+## C. Calcular estadísticos y significancia
+
+Para calcular el estadístico $\chi^2$ voy a comparar la tabla de contingencia observada contra una tabla teórica aleatoria contruida a partir de la primera. Esta tabla teórica contará en cada una de sus celdas con la frecuencia esperada de cada evento. A partir de estas dos tablas se puede calcular el estadístico $\chi^2$ como:
+
+$\chi^2 = \sum(((f_{obs} - f_{teo})^2)/f_{teo})$
+
+Donde, $f_{obs}$ es la frecuencia observada en la tabla de contingencia y $f_{teo}$ es la frecuencia esperada proveniente de la tabla teórica. 
+Este estadístico sigue una distribución $\chi^2$ con $\nu$ = ($\bf{c}$ - 1)($\bf{r}$ - 1) grados de libertad, donde $\bf{c}$ es la cantidad de columnas y $\bf{r}$ la cantidad filas. Para evaluar su significancia defino las siguientes hipótesis:
+
+$\bf{H0}$: La tabla observada es  IGUAL a la tabla teórica.  
+
+$\bf{H1}$: La tabla observada es DISTINTA a la tabla teórica.
+
+nivel de significancia: $\bf{alpha}$ = 5%
+
+Voy a poder rechazar $\bf{H0}$ cuando el estadístico calculado sea mayor que el estadístico tabulado ($\chi_{tab}^2$) dado por:
+```{r}
+qchisq(p = 0.95, df = (5 - 1)*(2 - 1))
+```
+
+ Para realizar este procedimiento en las 3 tablas utilizo la siguiente función:
+ (función propia, fue probada con el ejemplo dado en clase)
+
+```{r}
+ctg_test = function(tabla, alpha, totales = FALSE, show.table = FALSE){
+  
+  #tabla : tabla de contingencia a analizar
+  #alpha: nivel de significancia
+  #totales: en el caso que la tabla se presente ya con las sumas de columnas y filas
+  
+  #controles
+  if(!is.data.frame(tabla) & !is.matrix(tabla)){
+    stop("tabla debe ser un data.frame o una matriz")
+  }
+  
+  if(is.character(alpha) | alpha > 1){
+    stop("ALPHA debe estar entre 0 y 1")
+  }
+  
+  
+  if(totales){
+    tabla = tabla[1:(nrow(tabla)-1), 1:(ncol(tabla)-1)]
+  } 
+  
+  
+  # suma de cada fila, columna y total
+  
+  tot_col = apply(tabla, c(2), sum)
+  tot_row = apply(tabla, c(1), sum)
+  total = sum(tot_row)
+  
+  # creacion de tabla aleatoria
+  tabla_rand = matrix(nrow = nrow(tabla), ncol = ncol(tabla))
+  
+  for(r in 1:nrow(tabla)){
+    
+    tabla_rand[r,] = tot_row[r]*tot_col/total
+   
+  }
+  
+  
+  if(show.table){
+    print(tabla_rand)
+  }
+  
+  
+  # calculo del estadistico chi-sq
+  est = sum(((tabla - tabla_rand)**2)/tabla_rand)
+  
+  # chi-teo. a partir de los valores tabulados (funcion qchisq)
+  est_teo = qchisq(p = (1-alpha), df = (nrow(tabla) - 1)*(ncol(tabla) - 1))
+  
+  
+  # coeficiente de contingencia 
+  
+   c = sqrt(est/(est+total)) 
+  
+  # test segun el valor del estadistico calculado y el teorico
+  if(abs(est) > abs(est_teo)){
+   print(paste("Rechazo H0 con un ", (1-alpha)*100, "% de confianza", sep = ""), quote = F)
+  test = "Si"
+  } else {
+   print(paste("NO rechazo H0 con un ", (1-alpha)*100, "% de confianza", sep = ""), quote = F)
+  test = "No"
+  }
+  
+  
+  result = c(est, est_teo, c, alpha)
+  names(result) = c("Chi.c", "Chi.teo", "C", "alpha")
+  return(result) 
+  
+}
+
+```
+
+
+
+Aplico la función a las tres tablas:
+
+```{r}
+
+# tabla en la que se guardaran los resultado de la función
+tabla.res = data.frame(Estaciones = NA, Período = NA, Cant.datos = NA,
+                       chi.sq = NA, C = NA, significancia = NA)
+
+for(i in 1:3){
+  
+  # la tabla ingresada en la funciòn debe ser un data frame
+  aux = as.data.frame(tablas.ctg[,,i]) 
+  
+  ctg = ctg_test(tabla = aux, alpha = 0.05)
+  
+  tabla.res[i,4] = ctg[1]; tabla.res[i,5] = ctg[3]
+  tabla.res[i,6] = ctg[4]
+}
+
+```
+
+
+Para las tres tablas de contingencia NO rechazo $\bf{H0}$ con un 5% de significancia. Por lo tanto NO hay relación entre los quintiles y la procedencia del dato (las estaciones).
+
+```{r, echo=F}
+tabla.res[,1] = c("Cba vs MDP", "Cba vs Ros", "Cba vs Con")
+tabla.res[,2] = c("6/1977 - 12/2009")
+tabla.res[,3] = 864
+tabla.res[,4] = round(as.numeric(tabla.res[,4]), digits = 3)
+tabla.res[,5] = round(as.numeric(tabla.res[,5]), digits = 3)
+
+print(tabla.res)
+
+View(tabla.res)
+```
+
+
+
+
+
+
+ 
+ 
+

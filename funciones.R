@@ -223,3 +223,364 @@ ctg_test = function(tabla, alpha, totales = FALSE){
   return(result)
   
 }
+
+
+
+#### Graf.1 ####
+FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.fill
+                     , mult.cont = F, mult.cont.step = 1, contorno = F, nivel.cont = 0
+                     , color.cont = "black", sig = F, type.sig = "tile", v.sig
+                     , alpha.sig = 1, color.sig = "white", size.point = 1, mapa
+                     , fill.mapa = F, colorbar = "Spectral", n.colors = 9
+                     , cb.h = 10, cb.w = 1, cb.size = 10, h.just = .5, revert.brewer = F
+                     , colorbar.pos = "right", escala, label.escala = ""
+                     , titulo = "", title.size= 14, x.label = "", y.label = ""
+                     , lats.size = 10, letter.size = 12
+                     , mostrar = T, save = F, width = 15, height = 20, salida
+                     , nombre.fig = "fig", modo = "individual"){
+                     
+                     
+                    
+  library(maps)
+  require(fields)
+  require(mapdata)
+  library(ggplot2)
+  library(RColorBrewer)
+  library(mapproj)
+  library(metR)
+  #library(akima)
+  library(sp)
+  library(maptools)
+  
+  ruta = getwd()
+  
+  if(!is.data.frame(field)){
+    
+    data = expand.grid(lon = lon, lat = lat)
+    data[,3] = array(field, dim = length(lon)*length(lat)) - resta
+    
+  }
+  
+  
+  if(modo == "individual"){
+    r = 1
+  } else if(modo == "estaciones"){
+    r = 4
+  } else if(modo == "meses"){
+    r = 12
+  } else {
+    stop("modo debe ser indiviudal, estaciones o meses")
+  }
+  
+  
+  mapa = tolower(mapa)
+  
+  if(mapa == "argentina"){
+    
+    map <- map_data("world", region = c("Argentina", colour = "black"))
+    
+    breaks.lon = seq(280-360, 310-360, by = 10); limits.lon = c(min(breaks.lon), max(breaks.lon))
+    breaks.lat = seq(-60, -20, by = 10); limits.lat = c(min(breaks.lat), max(breaks.lat))
+    
+    if(tile){
+      
+      outline.arg <- map("world", regions = "Argentina", 
+                         exact = TRUE, plot = F, fill = T)
+      
+      IDs <- sapply(strsplit(outline.arg$names, ":"), function(x) x[1])
+      
+      # Lo convierto en un objeto de clase "SpatialPolygons": 
+      sp.arg <- map2SpatialPolygons(outline.arg, IDs=IDs, proj4string=CRS("+proj=longlat +datum=WGS84"))
+      
+      
+      # Convierto al data.frame "df1" 
+      # en un objeto de clase "SpatialPolygons":
+      # IMPORTANTE: Debe tener la misma proyección que "sp.arg". 
+      sp.df1 <- SpatialPointsDataFrame(coords = data[,c("lon","lat")], data = data,
+                                       proj4string = CRS("+proj=longlat +datum=WGS84"))
+      
+      # Veo qué puntos de "sp.df1" están adentro de "sp.arg": 
+      interseccion <- sp.df1[!is.na(over(sp.df1, sp.arg)), ]
+      # Convierto mi "interseccion" en un data.frame:
+      data <- as.data.frame(interseccion)
+      
+    }
+    
+  } else if(mapa == "sa"){
+    
+    map <- map_data("world2", regions = c("Brazil", "French Guiana", "Suriname", "Colombia", "Venezuela","Argentina", "Chile", "Uruguay",
+                                          "Bolivia", "Ecuador", "Paraguay", "Peru", "Guyana", "Panama", "Costa Rica", "Nicaragua",
+                                          "Martinique", "falkland islands", "Honduras", "El Salvador", "Guatemala", "Belice"), colour = "black")
+    
+    
+    breaks.lon = seq(270, 335, by = 10); limits.lon = c(min(breaks.lon), max(breaks.lon))
+    breaks.lat = seq(-60, 20, by = 10); limits.lat = c(min(breaks.lat), max(breaks.lat))
+    
+  } else if(mapa == "mundo2"){
+    
+    map <- map_data("world2", colour = "black")
+    
+  } else if(mapa == "mundo1"){
+    
+    map <- map_data("world", colour = "black")
+    
+  }
+  
+  
+  escala.limites = c(min(escala), max(escala))
+  
+  
+  
+  for(i in 1:r){
+    
+    g = ggplot(data = data, aes(x = lon, y = lat))
+    
+    if(revert.brewer == T){
+      if(colorbar.pos == "right"){
+        
+        if(contour.fill & tile){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == F & tile == T){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) + 
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala
+                              , guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                       , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == T & tile == F){
+          
+          g =  g +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+        }
+        
+        
+      } else {
+        
+        if(contour.fill & tile){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == F & tile == T){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala
+                              , guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                       , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == T & tile == F){
+          
+          g =  g +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = rev(brewer.pal(n=n.colors , colorbar))
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+        }
+        
+      }
+      
+    } else {
+      if(colorbar.pos == "right"){
+        
+        if(contour.fill & tile){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == F & tile == T){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) + 
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala
+                              , guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                       , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == T & tile == F){
+          
+          g =  g +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w, barheight = cb.h, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+        }
+        
+        
+      } else{
+        
+        if(contour.fill & tile){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == F & tile == T){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala
+                              , guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                       , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == T & tile == F){
+          
+          g =  g +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3),alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala, colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.h, barheight = cb.w, title.position = "top", title.hjust = 0.5
+                                                     , raster = F, ticks = T, label.theme = element_text(size = cb.size)))
+        }
+        
+      }
+      
+    }
+    
+    
+    
+    
+    
+    
+    
+    if(sig == T){
+      if( type.sig == "tile"){
+        
+        
+        field.sig = field
+        
+        field.sig[which(abs(field.sig) < v.sig)] = NA
+        
+        data2 = expand.grid(lon = lon, lat = lat)
+        data2[,3] = array(field.sig, dim = length(lon)*length(lat)) 
+        colnames(data2)<-c("lon", "lat", "var")
+        
+        g = g +  geom_tile(data = subset(data2, is.na(var)),aes(x = lon, y = lat, fill = is.na(var))
+                           , alpha = alpha.sig, fill = color.sig, show.legend = F)
+        
+        
+      } else if(type.sig == "point2"){
+        
+        
+        g = g + stat_subset(data = data, aes(x = lon , y = lat, z = V3, subset = V3 <= v.sig)
+                            , size = size.point, color = color.sig, alpha = alpha.sig, geom = "point")
+        
+      } else {
+        
+        g = g + stat_subset(data = data, aes(x = lon , y = lat, z = V3, subset = V3 > v.sig)
+                            , size = size.point, color = color.sig, alpha = alpha.sig, geom = "point")       
+      }
+      
+    } 
+    
+    
+    
+    if(fill.mapa == T){
+      g = g + geom_polygon(data = map, aes(x = long ,y = lat, group = group),fill = "black", color = color.mapa, alpha = 0.3) 
+    } else {
+      g = g + geom_polygon(data = map, aes(x = long ,y = lat, group = group),fill = NA, color = "black") 
+    }
+    
+    
+    if(mult.cont){
+      
+      r.lim = round(max(data$V3, na.rm = T), 1)
+      
+      g = g +  geom_contour(data = data, aes(x = lon, y = lat, z = V3), breaks = seq(-r.lim, r.lim, by = mult.cont.step),
+                            color = "black", size = 0.2) +
+        geom_text_contour(aes(z = V3), stroke = 0)
+      
+    } 
+    
+    if(contorno){
+      
+      g = g + stat_contour(data = data, aes(x = lon, y = lat, z = V3)
+                           , color = color.cont, size = 1, breaks = nivel.cont, show.legend = T) 
+      
+      
+    }
+    
+    
+    g = g + theme_minimal() + ggtitle(titulo) +
+      
+      scale_x_longitude(breaks = breaks.lon, name = x.label, limits = limits.lon)+
+      scale_y_latitude(breaks = breaks.lat, name = y.label, limits = limits.lat)+
+      theme(axis.text.y   = element_text(size = lats.size), axis.text.x   = element_text(size = lats.size), axis.title.y  = element_text(size = title.size),
+            axis.title.x  = element_text(size = lats.size), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+            panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
+            panel.ontop = TRUE,
+            plot.title = element_text(hjust = h.just, size = letter.size)) + geom_hline(yintercept = 0, color = "black")
+    
+    
+    
+    if(colorbar.pos == "bottom"){
+      g = g + theme(legend.position = "bottom")
+    }
+    
+    if(save){
+      ggsave(paste(ruta, salida, nombre.fig, ".jpg", sep = ""), plot = g, width = width, height = height, units = "cm")
+      print(paste(ruta, salida, nombre.fig, ".jpg", sep = ""))
+    }
+    
+    
+    
+    if(mostrar){
+      return(g)
+    }
+    
+    ###
+  }
+}
+
+
+
+
+#### corr simple ####
+corr_simple = function(matriz, serie, cf){
+  
+  # corr una matriz en modo S vs una serie 
+  
+  a = 1 - cf
+  
+  corr = cor(matriz,serie)
+  
+  
+  rc = qnorm(1 - a/2)/sqrt(length(serie)-2)
+  # qt(p = 0.95,df = length(serie)-2)/sqrt((length(serie)-1)+qt(p = 0.95,df = length(serie)-2))
+  
+  corr.sig = corr
+  corr.sig[which(corr < rc)] = NA
+  corr.sig[which(!is.na(corr.sig))] = 1
+  
+  result = list()
+  result[[1]] = corr; result[[2]] = rc; result[[3]] = corr.sig
+  return(result)
+}

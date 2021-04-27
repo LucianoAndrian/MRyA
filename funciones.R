@@ -237,7 +237,9 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
                      , titulo = "", title.size= 14, x.label = "", y.label = ""
                      , lats.size = 10, letter.size = 12
                      , mostrar = T, save = F, width = 15, height = 20, salida
-                     , nombre.fig = "fig", modo = "individual"){
+                     , nombre.fig = "fig", modo = "individual"
+                     , breaks.lon = seq(270, 335, by = 10) # en el caso de SA puede ser necesario modificarlos
+                     , breaks.lat = seq(-60, 20, by = 10)){
                      
                      
                     
@@ -313,8 +315,8 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
                                           "Martinique", "falkland islands", "Honduras", "El Salvador", "Guatemala", "Belice"), colour = "black")
     
     
-    breaks.lon = seq(270, 335, by = 10); limits.lon = c(min(breaks.lon), max(breaks.lon))
-    breaks.lat = seq(-60, 20, by = 10); limits.lat = c(min(breaks.lat), max(breaks.lat))
+   limits.lon = c(min(breaks.lon), max(breaks.lon))
+   limits.lat = c(min(breaks.lat), max(breaks.lat))
     
   } else if(mapa == "mundo2"){
     
@@ -583,4 +585,134 @@ corr_simple = function(matriz, serie, cf){
   result = list()
   result[[1]] = corr; result[[2]] = rc; result[[3]] = corr.sig
   return(result)
+}
+
+
+#### Lund ####
+Lund = function(data, rc){
+  
+  aux = cor(data)
+  diag(aux) = NA
+  
+  aux[which(abs(aux)<rc)] = NA  
+  
+  tabla = matrix(data = NA, nrow = ncol(aux), ncol = ncol(aux))
+  g.x = 1:10
+  t = 1
+  while(length(which(!is.na(aux))) >= 1){
+    
+    l = vector()
+    for(i in 1:ncol(aux)){
+      
+      l[i] = length(which(!is.na(aux[,i])))
+      
+    }
+    
+    t.x = which(l == max(l))
+    
+    if(length(t.x)>1){
+      
+      if(t == 1){
+        print(aux[,t.x])
+        print(t.x)
+      } else {
+        print(aux)
+      }
+      
+      
+      t.x = as.numeric(readline(paste("Tipo ", t, "?: ", sep = "")))
+      
+    }
+    
+    
+    g.x = which(!is.na(aux[,t.x]))
+    
+    print(paste("Tipo", t, t.x))
+    print(paste("Grupo", t))
+    print(g.x)
+    tabla[1,t] = t.x 
+    tabla[2:(length(g.x)+1),t] = g.x
+    
+    #residual
+    aux[c(g.x,t.x),] = NA
+    aux[,c(g.x,t.x)] = NA
+    print(aux)
+    
+    readline("continuar?")
+    
+    t = t + 1
+  }
+  
+  return(tabla)
+}
+
+
+
+#### Componentes ppales adaptado a funcion ####
+
+ACP = function(data, save = F){
+  
+  X<-VARIABLE
+  
+  # dimenciones de la matriz
+  dimension<-dim(X)
+  m<-dimension[1]
+  n<-dimension[2]
+  
+  #scale resta la media a cda columna y divide por el sd
+  Xs <- scale(X, center = TRUE, scale = TRUE) 
+  
+  
+  #'Descompone en valores singulares', autovalores, autovectores, etc
+  descom<-svd(Xs)
+  
+  P<-descom$u 
+  d<-descom$d
+  Q<-descom$v
+  
+  # D autovalores
+  # transformo a d a matriz Diagonal para poder multiplicar
+  sigma=diag(d)
+  D<-(t(sigma) %*% sigma)/(m-1)  # "%*%" es el comando para producto de matrices
+  
+  #'las CP Zs
+  Zs<-Xs %*% Q %*% (diag(diag(D) ^ (-0.5)))
+  
+  #('autovectores (Fs) son:')
+  Fs <- Q%*%(diag(diag(D)^(0.5))) ### NOOOO!!! F --> Fs
+  # Si se asigna algo F, F deja de poder ser usado com FALSE!!!
+  
+  #('Varianza explicada % (VECP) por cada componente')
+  Diag<-diag(D)
+  SumaDiag<-sum(Diag)
+  VECP<-(Diag/SumaDiag)*100
+  
+  
+  results = list()
+  results[[1]] = round(diag(D), 2) # autovalores
+  results[[2]] = round(Zs, 2) # componentes
+  results[[3]] = round(Fs, 2) # autovectores
+  results[[4]] = round(VECP, 2) # % varianza
+  
+  
+  
+  if(save){
+    
+    print('archivo de autovalores')
+    autovalores<-write.table(diag(round(D,2)), 'autovalores.txt')
+    
+    print('archivo de Zs (CP)')
+    componentes<-write.table(round(Zs,2), 'componentes.txt')
+    
+    print('archivo de autovectores (F)')
+    autovectores<-write.table(round(Fs,2), 'autovectores.txt')
+    
+    print('archivo de la varianza explicada por cada componente')
+    Varexplicada<-write.table(round(VECP,2), 'vecp.txt',col.names='VECP')
+    
+  }
+  
+  return(results)
+  
+  
 }

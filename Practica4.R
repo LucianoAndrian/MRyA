@@ -102,7 +102,7 @@ df <- interp(x = datos$lon,
 
 FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
           escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
-          type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
+          type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = T, na.fill = -100000
           , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = "T.1_oct"
           , titulo = "T1 - Octubre", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
 
@@ -116,3 +116,116 @@ FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
           type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
           , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = "T.2_Dic"
           , titulo = "T2 - Dic", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+
+
+
+## 2
+#
+
+source("funciones.R")
+library(akima)
+library(xlsx)
+
+datos = as.data.frame(read.xlsx(paste(ruta_datos,"Datos_p4.xlsx", sep = ""), sheetIndex = 1, endRow = 34, startRow = 2))
+
+source("funciones.R")
+
+# filtrando el campo medio
+datos2 = datos
+
+for(i in 1:15){
+  datos2[,i] = datos[,i] - colMeans(datos)[i]  # ?????? xq da igual?
+}
+
+datos2 = datos[,4:15] - 74.5
+cps = ACP(data = datos2, save = T)
+
+aux2 = cbind(datos[,c(1,2)], datos2)
+
+
+PlotCP(cp = cps, datos.obs = aux2, type.sig = "scree"
+       , mapa = "mundo", escala = seq(-3,3, by = .5)
+       , colorbar = "RdBu", escala.obs = seq(-80,80, by = 20), r.brewer = T
+       , cp.draw = 1, salida = ruta_salidas, nombre = "probando"
+       , colorbar.obs = "RdBu", r.brewer.obs = T, c.fill = F, cont = T
+       , step.obs = 50, step.cp = 0.5, step = 1
+       , tile = T)
+
+
+
+#### 3
+
+source("funciones.R")
+library(akima)
+library(xlsx)
+
+datos = as.data.frame(read.xlsx(paste(ruta_datos,"/patagonia-pp.xls", sep = ""), sheetIndex = 2, startRow = 1, endRow = 21))
+
+datos = t(datos[,-c(1,14,15)])
+
+
+estaciones = as.data.frame(read.xlsx(paste(ruta_datos,"/patagonia-pp.xls", sep = ""), sheetIndex = 1, header = F))
+
+source("funciones.R")
+
+
+
+
+cps = ACP(data = datos, save = F)
+
+aux2 = cbind(estaciones[,c(4)], estaciones[,c(3)],datos)
+
+
+
+PlotCP(cp = cps, datos.obs = aux2, type.sig = "scree"
+       , mapa = "mundo", escala = seq(-1,1, by = .2)
+       , colorbar = "RdBu", escala.obs = seq(-500,500, by = 100), r.brewer = T
+       , cp.draw = 1, salida = ruta_salidas, nombre = "probando"
+       , colorbar.obs = "RdBu", r.brewer.obs = T, c.fill = F, cont = F
+       , step.obs = 100, step.cp = 0.5, step = 1
+       , tile = T#, breaks.lon = seq(-80, -30 , by = 10)
+  )
+
+
+
+
+
+
+
+
+#########################################################################################################################
+# ej clase
+# practica 4
+ruta_datos = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/P4/"
+system(command = "mkdir P4/SalidasP4")
+ruta_salidas = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/P4/SalidasP4"
+
+
+source("funciones.R")
+
+datos = read.table(paste(ruta_datos, "/salinidad_anom.txt", sep = ""), sep = ";")
+
+aux = datos[,-c(1,2)]
+
+
+
+
+
+cps = ACP(data = aux)
+
+for(i in 1:6){
+  
+  PlotCP(cp = cps, datos.obs = datos, type.sig = "scree"
+         , mapa = "mundo", escala = seq(-.8,.8, by = .2)
+         , colorbar = "RdBu", escala.obs = seq(-.8,.8, by = .2), r.brewer = T
+         , cp.draw = i, salida = ruta_salidas, nombre = paste("CP", i, sep = "")
+         , colorbar.obs = "RdBu", r.brewer.obs = T, c.fill = F, cont = T
+         , step.obs = .4, step = 20, step.a = 1, step.cp = .4
+         , tile = T, x.lim = 10
+         , breaks.lon = seq(-80, 30 , by = 10)
+         , breaks.lat = seq(-55, -20, by = 10)
+         , width = 35)
+  
+}
+
+  

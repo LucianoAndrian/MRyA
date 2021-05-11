@@ -1,7 +1,7 @@
 # Luciano Andrian 
 # Metodos de regresión y etc... 2021
 # Practica 1
-library(readxl)
+
 library(ggplot2)
 ruta_datos = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/P1/Datos P1-20210322/"
 system(command = "mkdir P1/SalidasP1")
@@ -10,30 +10,43 @@ ruta_salidas = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/P1/SalidasP1"
 ###### E1 ###### 
 # el txt esta vacio
 # --> xlsx
-datos = as.data.frame(read_excel(paste(ruta_datos, "pp_media_laboulaye.xlsx", sep = "")))
+library(xlsx)
+datos = as.data.frame(read.xlsx(paste(ruta_datos, "pp_media_laboulaye.xlsx", sep = ""), sheetIndex = 1))
 
-#A. DETECTE DATOS FALTANTES
-# "mirando" los datos aparecen valores de -999.9
-# tambien graficando se pueden identificar:
-plot.ts(datos[,4])
-
-# cuantos datos faltantes?
+###############################################################################
+# control de calidad
+# faltantes: estan marcados con -999.9
 n.faltantes = length(which(datos == -999.9)) # 4
 
+#cuales son?
 faltantes = matrix(data = NA, nrow = n.faltantes, ncol = 2)
 faltantes[,1] = datos[,2][which(datos == -999.9, arr.ind = T)[1:n.faltantes,1]]
 faltantes[,2] = colnames(datos)[which(datos == -999.9, arr.ind = T)[1:n.faltantes,2]]
 #fechas con datos faltantes
 print(faltantes)
 
-#b Calcule la onda anual media (evolución durante el año) de la precipitación mensual
-#acumulada y el desvío standard de la precipitación de cada mes. Calcule también
-#mediana, moda, varianza, asimetría y curtosis de las variables mensualmente.
-#Discuta su significado.
-
-# son pocos datos faltantes, los elimino del calculo -999.9 = NA
-
+# pocos datos, los elimino
 datos[which(datos == -999.9, arr.ind = T)] = NA
+
+
+# hay años faltantes o repetidos
+
+# de levels solo cuenta los numeros, 
+# ej, si x = c(1,1,NA,3,4)
+# > levels(factor(x))
+# [1] "1" "3" "4"
+
+l = length(levels(factor(datos[,2])))
+
+# si existieran años repetidos l != nrow(datos)
+
+l == nrow(datos) # no hay años repetidos
+
+# faltantes, salteados o desordenados
+# de darse cualcuiera de estos casos seria FALSE
+identical(datos[,2], seq(min(datos[,2]), max(datos[,2]), by = 1))
+
+###############################################################################
 
 # onda anual media
 
@@ -148,74 +161,70 @@ ggsave(paste(ruta_salidas,"/E1.d_anoms",".jpg",sep =""), plot = anoms, width = 1
 
 
 ###### E2 ######
-estaciones = as.data.frame(read_excel(paste(ruta_datos, "pampa-pp.xlsx", sep = ""), sheet = 1 ))
-datos = as.data.frame(read_excel(paste(ruta_datos, "pampa-pp.xlsx", sep = ""), sheet = 2 , skip = 1))
+estaciones = as.data.frame(read.table(file = paste(ruta_datos, "datos-pampa-pp_estaciones.txt", sep = ""), sep = "", header = T))
 
 
-#a. príodo en común # ESTABA EN LA PRIMERA HOJA DEL XSL..... 
 
-# ESTO NO ES NECESARIO ESTO (IGUAL FUNCIONA)
+datos = as.data.frame(read.table(paste(ruta_datos, "datos-pampa-pp.txt", sep = ""), sep = "\t", header = T))
 
-pos.anios = which(!is.na(datos[,1]))
-minimos = maximos = vector()
-for(i in 1:length(pos.anios)){
-  if(i != length(pos.anios)){
+#a control de calidad y periodo en comun.
+
+##############################################################################
+# periodo en comun en la hoja "estaciones" queda 1959-2000
+
+est = as.numeric(levels(factor(datos$est)))
+
+max.anios = min.anios = vector()
+
+for(i in 1:length(est)){
+  anios = datos[which(datos[,1] == est[i]),2]
+  
+  l = length(levels(factor(anios)))
+  
+  # si existieran años repetidos l != nrow(datos)
+  
+  no.rep = l == length(anios) # no hay años repetidos
+  
+  # faltantes, salteados o desordenados
+  # de darse cualcuiera de estos casos seria FALSE
+  falt = identical(as.numeric(anios), seq(min(anios), max(anios), by = 1))
+  
+  if(no.rep & falt){
     
-    minimos[i] = min(datos[pos.anios[i]:(pos.anios[i+1]-1),3])
-    maximos[i] = max(datos[pos.anios[i]:(pos.anios[i+1]-1),3])
-    
-  } else {
-    
-    minimos[i] = min(datos[pos.anios[i]:length(datos[,1]),3])
-    maximos[i] = max(datos[pos.anios[i]:length(datos[,1]),3])
-    
+    max.anios[i] = max(anios, na.rm = T)
+    min.anios[i] = min(anios, na.rm = T)
   }
 }
 
-periodo.comun = seq(max(minimos), min(maximos), by = 1)
-# periodo en comun 1959-2000
+periodo.comun = seq(max(min.anios), min(max.anios), by = 1)
 
-#b. Calcule la onda anual media de precipitación en cada estación para el período
-#   coincidente
 
-# reordeno datos
-datos2 = array(data = NA, dim = c(length(periodo.comun), 12, length(estaciones[,3])-1))
+datos2 = array(data = NA, dim = c(length(periodo.comun), 12, length(est)))
+for(i in 1:length(est)){
+  
+  aux = datos[which(datos[,1] == est[i]),]
+  min.per = which(aux$año == periodo.comun[1])
+  max.per = which(aux$año == max(periodo.comun))
+  
+  datos2[,,i] = as.matrix(aux[min.per:max.per,-c(1,2)])
 
-# calculo solo en los años de periodo en comun para cada estacion
-for(i in 1:length(pos.anios)){
-  if(i != length(pos.anios)){
-    
-    x = datos[pos.anios[i]:(pos.anios[i+1]-1),3:15]
-    l = seq(which(x[,1] == min(periodo.comun)), which(x[,1] == max(periodo.comun)))
-    
-    datos2[,,i] = as.matrix(x[l,2:13])
-    
-  } else {
-    
-    minimos[i] = min(datos[pos.anios[i]:length(datos[,1]),3])
-    x = datos[pos.anios[i]:length(datos[,1]),3:15]
-    l = seq(which(x[,1] == min(periodo.comun)), which(x[,1] == max(periodo.comun)))
-    
-    datos2[,,i] = as.matrix(x[l,2:13])
-    
-  }
 }
+##############################################################################
+
+#las estaciones quedaron desordanas respecto a "estaciones"
+
+estaciones = estaciones[order(estaciones$estacion,decreasing=F),]
 
 # onda anual para cada estacion
-
 onda_anual = apply(datos2, c(2,3), mean, na.rm = T)
-
 
 aux = matrix(data = NA, nrow = 12*16, ncol = 3)
 aux[,3] = seq(1:12)
 aux[,2] = onda_anual
 aux = as.data.frame(aux)
 
-aux2 = c("B.Blanca", "Pergamino", "Laboulaye", "OCBA", "Rosario", "Nve.Julio",
-         "R.Cuarto", "V.Dolores", "Pilar", "Dolores", "Azul", "C.Suarez",
-         "Pigue", "S.Viejo", "M.Juarez", "trs·arroyos")
 for(i in 0:15){
-  aux[(1+12*i):(12+12*i),1] = aux2[i+1]
+  aux[(1+12*i):(12+12*i),1] = as.character(estaciones$nombre[i+1])
 }
 
 aux[,1] = as.factor(aux[,1])
@@ -225,98 +234,63 @@ colnames(aux) = c("Estaciones", "PP", "Meses")
 ggplot(data = aux, aes(x = Meses, y = PP, colour = Estaciones)) + 
   geom_line() + theme_minimal()
 
-
-
-
- 
-
-
 # c acumulada media de MAM, JJA, SON y DJF
 
 seasons = array(data = NA, dim = c(4,16))
-seasons[1,] = apply(onda_anual[3:5,], c(2), mean) # MAM
-seasons[2,] = apply(onda_anual[6:8,], c(2), mean) # JJA
-seasons[3,] = apply(onda_anual[9:11,], c(2), mean) # SON 
-seasons[4,] = apply(onda_anual[c(1,2,12),], c(2), mean) # DJF
+seasons[1,] = apply(onda_anual[3:5,], c(2), sum) # MAM
+seasons[2,] = apply(onda_anual[6:8,], c(2), sum) # JJA
+seasons[3,] = apply(onda_anual[9:11,], c(2), sum) # SON 
+seasons[4,] = apply(onda_anual[c(1,2,12),], c(2), sum) # DJF
 
 colnames(seasons) = as.character(unique(datos[,2]))
 rownames(seasons) = c("MAM", "JJA", "SON", "DJF")
 
 
-# d GRaficar, INTERPOLAR?
+# d GRaficar, INTERPOLAR
 
-library(maps)
-library(maptools)
-library(ggplot2)
-library(ggmap)
-library(mapproj)
-library(grid)
-library(gridExtra)
-library(akima)
-library(metR)
-library(RColorBrewer)
+puntos = cbind(estaciones$lon, estaciones$lat, seasons[1,], seasons[2,], seasons[3,], seasons[4,])
+
+df <- interp(x = puntos[,1],
+             y =  puntos[,2],
+             z =  puntos[,3], extrap = FALSE)
 
 
-# problema con las latitudes: quedaban muy desfasadas de las posiciones reales
-# algunas coordenadas fueron corregidas por ejemplo de -30,7 --> -30,5
-# si bien antes pudo leer bien los valores con "," en este caso no lo hacia, las coordenadas 
-# fueron pasadas a un txt con "." en lugar de ","
-
-y = read.table(paste(ruta_datos, "prueba.txt", sep = ""))
-puntos = data.frame(lon = y[,1]-.2, lat = y[,2]-.2) # pese a las correcciones, para ambas coordenadas se resto -.2º
-
-#mapa estilo google maps.. (no funcionan los otros)
-mapa = get_map(location = c(left = -68, bottom = -40, right=-55, top = -30 ), source = 'stamen', maptype = "toner-lite",zoom=6)
-
-#mapa limites 
-map <- map_data("world2", region = c("Argentina", "Uruguay"), colour = "black")
-
-est = c("MAM", "JJA", "SON", "DJF")
-
-puntos = cbind(puntos, aux2)
-
-puntos = cbind(puntos, seasons[1,], seasons[2,], seasons[3,], seasons[4,])
-
-#graficado
+# FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina"
+#           , escala = seq(0,300, by = 30), tile = T, revert.brewer = T)
 
 
+library(fields)
+aux.breaks <- seq(0, 300, 30) # Definir los umbrales para graficar
+colores <- rep(rev(brewer.pal(10, "Spectral")), each = 1) # Barra de colores
 
-# no queda muy bien con el mapa de fondo, buscando division politica de argentina para usar....
-for(i in 1:4){
-  
-  aux = data.frame(pp = seasons[i,], lon = y[,1], lat = y[,2]) # data.frame para graficar
-  
-  # INTERPOLACION
-  akima_li <- with(aux,interp(x = aux$lon, y = aux$lat, z = aux$pp,
-                            yo = seq(min(aux$lat)-1, max(aux$lat)+1, length = 20*15.71),
-                            xo = seq(min(aux$lon)-1, max(aux$lon)+1, length = 20*8.87),
-                            linear = F, extrap = T))
- aux =  data.frame(expand.grid(x = akima_li$x, y = akima_li$y), z = c(akima_li$z))
- 
- 
- v = ggmap(mapa, extent = 'normal') + 
-   ggtitle("") +
-   geom_contour_fill(data = aux, aes(x = x, y = y, z = z), alpha = 0.3, na.fill = -10000 , breaks = seq(30,120, by = 5)) +
-   scale_fill_stepsn(limits = c(30,125), name = "mm", colours = (brewer.pal(n = 9 , "YlGnBu")), na.value = "white", breaks = seq(30,120,by = 10),
-                     guide = guide_colorbar(barwidth = 1, barheight = 10, title.position = "top", title.hjust = 0.5,
-                                            raster = F, ticks = T, label.theme = element_text(size = 10)))+
-   geom_polygon(data = map, aes(x = long -360 ,y = lat, group = group),fill = NA, color = "black") +
-   coord_cartesian(xlim = c(-65.5, -57), ylim = c(-39, -31)) +
-   geom_point(data=puntos, aes(x = lon, y = lat), col="red",size=2) +
-   geom_text(data = puntos, aes(label = aux2), vjust = -1) +
-   geom_text(data = puntos, aes(label = round(puntos[,i+3], digits = 1)), vjust = 1.5) +
-   xlab("") + 
-   ylab("") +
-   theme(axis.text.y   = element_text(size = 14), axis.text.x   = element_text(size = 14), axis.title.y  = element_text(size = 14),
-         axis.title.x  = element_text(size = 14),
-         panel.border = element_rect(colour = "black", fill = NA, size = 1),
-         panel.ontop = F,
-         plot.title = element_text(hjust = 0.5)) +
-   ggtitle(paste("PP media - ", est[i], sep = "")) 
- 
- ggsave(paste(ruta_salidas,"/E2.d_", est[i],".jpg",sep =""), plot = v, width = 15, height = 15, units = "cm")
- 
-}
+outline <- map("world", regions = "Argentina", 
+               exact = TRUE, plot = FALSE)
+
+xrange <- range(outline$x, na.rm = TRUE) # Veo los límites de las coordenadas.
+yrange <- range(outline$y, na.rm = TRUE)
+xbox <- xrange + c(-2, 2)
+ybox <- yrange + c(-2, 2)
+subset <- !is.na(outline$x)
+
+# Grafico todo junto: 
+
+jpeg("diciembre.jpg", pointsize = 12, res = 115, bg = "white")
+image.plot(df$x, df$y, df$z, col = colores, breaks = aux.breaks, 
+           ylab = "Latitud", xlab = "Longitud", 
+           lab.breaks = aux.breaks, legend.shrink = 1, 
+           xlim = c(min(df$x)-2, max(df$x)+2), ylim = c(min(df$y)-2, max(df$y)+2)) 
+title ("SON")
+
+contour(df$x, df$y, df$z, col = "black", add = TRUE, levels = seq(-1, 1, 0.15), ltw=1.4)
+
+polypath(c(outline$x[subset], NA, c(xbox, rev(xbox))),
+         c(outline$y[subset], NA, rep(ybox, each=2)),
+         col = "white", rule = "evenodd", border = NA)
+
+map(database = "world", add = TRUE, lwd = 0.5, col = "black")
+graphics.off()
+
+
 
 ##### E3 #####
 datos = as.data.frame(read.table(paste(ruta_datos, "pp_media_regional.txt", sep = "")))
@@ -444,18 +418,44 @@ ggsave(paste(ruta_salidas,"/E3.d_series_faltante",".jpg",sep =""), plot = aux, w
 
 #### E4 #####
 # mirando los archivos veo valores de -9999 que estan sin espacio con la fila anterior, ej 221-9999
+
+###### LEE Y REEMPLAZA!!!!!@#######
 # voy a reemplazar "-9" por espacio y el dato -9999 va quedar como 999, para las dos estaciones
 posadas = as.data.frame(read.table(text = gsub("-9", " ", readLines(paste(ruta_datos, "T8717800.txt", sep = ""))),
                                    skip = 1, na.strings = 999))
 
 # archivo posadas indica periodo 1902-1994 -> 93 anios
-nrow(posadas) #92!falta un anio
-anios.posadas = as.numeric(gsub("3138717800*", "\\1", as.factor(posadas[,1])))
-anios = seq(1902,1994)
+posadas[,1] = as.numeric(gsub("3138717800*", "\\1", as.factor(posadas[,1])))
+
+
+# hay años faltantes o repetidos
+
+# de levels solo cuenta los numeros, 
+# ej, si x = c(1,1,NA,3,4)
+# > levels(factor(x))
+# [1] "1" "3" "4"
+
+l = length(levels(factor(posadas[,1])))
+
+# si existieran años repetidos l != nrow(datos)
+
+l == nrow(posadas) # no hay años repetidos
+
+# faltantes, salteados o desordenados
+# de darse cualcuiera de estos casos seria FALSE
+identical(posadas[,1], seq(min(posadas[,1]), max(posadas[,1]), by = 1))
+
+# HAY FALTANTE, REPETIDO O DESORDENADO
+
+# Faltante?
+l == length(seq(min(posadas[,1]), max(posadas[,1]), by = 1))
+# Si hay un dato faltante
+# cual?
+anios = seq(min(posadas[,1]), max(posadas[,1]), by = 1)
 
 anio.faltante = min(anios[which(anios.posadas != anios)])
-
 #falta el anio 1980, lo agrego como dato faltante
+
 posadas[,1] = anios.posadas
 posadas = rbind(posadas[1:(which(posadas[,1] == 1979, arr.ind = T)),], c(1980, rep(NA,12)),
                 posadas[(which(posadas[,1] == 1981, arr.ind = T)):length(posadas[,1]),])
@@ -465,10 +465,19 @@ posadas = rbind(posadas[1:(which(posadas[,1] == 1979, arr.ind = T)),], c(1980, r
 junin = as.data.frame(read.table(text = gsub("-9", " ", readLines(paste(ruta_datos, "T8754800.txt", sep = ""))),
                                  skip = 1, na.strings = 999))
 # archivo indica periodo de 37 años
-nrow(junin) #ok
-
 junin[,1] = as.numeric(gsub("3138754800*", "\\1", as.factor(junin[,1])))
 
+
+
+l = length(levels(factor(junin[,1])))
+
+# si existieran años repetidos l != nrow(datos)
+
+l == nrow(junin) # no hay años repetidos
+
+# faltantes, salteados o desordenados
+# de darse cualcuiera de estos casos seria FALSE
+identical(junin[,1], seq(min(junin[,1]), max(junin[,1]), by = 1))
 
 # Determinar si la temperatura mensual de estas dos estaciones pertenece a la misma poblacion
 # (probablemente NO....)
@@ -485,15 +494,23 @@ var.test(media.posadas, media.junin) # esto esta bien, segun el test F (revisado
 # rechazo H0, la varianzas no perteneces a la misma poblacion
 
 t.test(media.posadas, media.junin, alternative = "two.side", conf.level = .95) #no pertenecen a la misma poblacion
+# 
+# H0 = media.posadas = media.junin
+# H1 = media.posadas != media.junin
+# 
+# alpha = 0.05
+# n1 = n2 = n
+
+Sx1x2 =sqrt(0.5*(var(media.posadas)+var(media.junin))) 
+t.est = (mean(media.posadas) - mean(media.junin))/(Sx1x2*sqrt(2/n))
+
+# t.est igual al obtenido t.test
+# 
+# t.test sigue un distribucion t-st con n1+n2-1 grados de libertad
 
 
 # se podria calcular el coef. de correlacion de pearson, pero el ciclo anual generaria correlacion espuria
 # se deberia ver calculando la anomalia a cada mes, restando el ciclo anual o por trimestres.
-
-
-# Teorico
-
-
 
 ##### E5 #####
 source("funciones.R")

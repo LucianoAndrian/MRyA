@@ -23,6 +23,9 @@ med_intervalo  = c(722.375, med(725,729.75), med(730,734.75), med(735,739.75),
                    med(755,759.75), med(760,764.75), med(765,769.75))
 
 
+
+
+
 biserial.test(tabla = datos, intervalos = med_intervalo, alpha = 0.05)
 
 ## 2
@@ -70,7 +73,7 @@ d = c(21,52,23,96)
 
 maiz = data.frame(a, b, c, d)
 
-ctg_test(tabla = maiz, alpha = 0.05, totales = T)
+ctg_test(tabla = maiz, alpha = 0.05, totales = T, show.table = T)
 
 
 #trigo
@@ -81,7 +84,7 @@ c = c(9,15,8,32)
 d = c(21,51,23,95)
 
 trigo = data.frame(a, b, c, d)
-ctg_test(tabla = trigo, alpha = 0.05, totales = T)
+ctg_test(tabla = trigo, alpha = 0.05, totales = T, show.table = T)
 
 
 ## 5 REVISAR

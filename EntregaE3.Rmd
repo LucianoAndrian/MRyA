@@ -3,6 +3,7 @@ title: "Ejercicio para entregar 3"
 author: "Luciano Andrian"
 output:
   pdf_document: 
+      fig_caption: yes
     keep_tex: yes
 ---
 
@@ -35,6 +36,20 @@ Tomo el período en común mas largo entre las 4 estaciones sin datos faltantes:
 ```{r, echo=FALSE}
 datos = as.data.frame(read_xlsx(paste(ruta_datos, "/Datos_pp_ej5_P3.xlsx", sep = "")
                                 ,sheet = 1 ))
+
+# control de calidad.
+
+l = length(levels(factor(datos[,1])))
+
+# si existieran años repetidos l != nrow(datos)
+
+l == nrow(datos)/12 # no hay AÑOS repetidos
+
+# faltantes, salteados o desordenados
+# de darse cualcuiera de estos casos seria FALSE
+identical(datos[,2], rep(x = 1:12,l)) # Hay MESES FALTANTES REPETIDOS O SALTEADOS.
+
+# SELECCIONO MIRANDO LOS DATOS
 
 ```
 
@@ -86,7 +101,7 @@ for(i in 1:5){
 
 ## C. Calcular estadísticos y significancia
 
-Para calcular el estadístico $\chi^2$ voy a comparar la tabla de contingencia observada contra una tabla teórica aleatoria contruida a partir de la primera. Esta tabla teórica contará en cada una de sus celdas con la frecuencia esperada de cada evento. A partir de estas dos tablas se puede calcular el estadístico $\chi^2$ como:
+Para calcular el estadístico $\chi^2$ voy a comparar la tabla de contingencia observada contra una tabla teórica aleatoria construida a partir de la primera. Esta tabla teórica contará en cada una de sus celdas con la frecuencia esperada de cada evento. A partir de estas dos tablas se puede calcular el estadístico $\chi^2$ como:
 
 $\chi^2 = \sum(((f_{obs} - f_{teo})^2)/f_{teo})$
 
@@ -192,6 +207,7 @@ tabla.res = data.frame(Estaciones = NA, Período = NA, Cant.datos = NA,
 for(i in 1:3){
   
   # la tabla ingresada en la funciòn debe ser un data frame
+  print(paste("Tabla:",i))
   aux = as.data.frame(tablas.ctg[,,i]) 
   
   ctg = ctg_test(tabla = aux, alpha = 0.05)

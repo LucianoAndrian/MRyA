@@ -6,15 +6,14 @@ ruta_salidas = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/P4/SalidasP4"
 
 ## E1 ##
 # a
-library(readxl)
+
 library(ggplot2)
 source("funciones.R")
 library(akima)
-
-
 library(xlsx)
 
 datos = as.data.frame(read.xlsx(paste(ruta_datos,"Datos_p4.xlsx", sep = ""), sheetIndex = 1, endRow = 34, startRow = 2))
+#datos = as.data.frame(read.table(paste(ruta_datos, "datos_ejemplo_lund.txt", sep = ""), sep = ";", header = T))
 
 
 for(i in 1:12){
@@ -22,23 +21,51 @@ for(i in 1:12){
                y =  datos[,2],
                z =  datos[,i+3], extrap = FALSE)
   
+  library(fields)
+  aux.breaks <- seq(0, 250, 25) # Definir los umbrales para graficar
+  colores <- rep(rev(brewer.pal(10, "Spectral")), each = 1) # Barra de colores
   
-  nombre = paste("pp_", month.abb[i], sep = "")
+  outline <- map("world", regions = "Argentina", 
+                 exact = TRUE, plot = FALSE)
   
-  FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
-            escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
-            type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
-            , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = nombre
-            , titulo = nombre, salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+  xrange <- range(outline$x, na.rm = TRUE) # Veo los límites de las coordenadas.
+  yrange <- range(outline$y, na.rm = TRUE)
+  xbox <- xrange + c(-2, 2)
+  ybox <- yrange + c(-2, 2)
+  subset <- !is.na(outline$x)
   
+  # Grafico todo junto: 
+  
+  jpeg("diciembre.jpg", pointsize = 12, res = 115, bg = "white")
+  image.plot(df$x, df$y, df$z, col = colores, breaks = aux.breaks, 
+             ylab = "Latitud", xlab = "Longitud", 
+             lab.breaks = aux.breaks, legend.shrink = 1, 
+             xlim = c(min(df$x)-2, max(df$x)+2), ylim = c(min(df$y)-2, max(df$y)+2)) 
+  title ("SON")
+  
+  contour(df$x, df$y, df$z, col = "black", add = TRUE, levels = seq(-1, 1, 0.15), ltw=1.4)
+  
+  polypath(c(outline$x[subset], NA, c(xbox, rev(xbox))),
+           c(outline$y[subset], NA, rep(ybox, each=2)),
+           col = "white", rule = "evenodd", border = NA)
+  
+  map(database = "world", add = TRUE, lwd = 0.5, col = "black")
+  graphics.off()
+  
+  
+  # nombre = paste("pp_", month.abb[i], sep = "")
+  # 
+  # FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
+  #           escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
+  #           type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
+  #           , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = nombre
+  #           , titulo = nombre, salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+  # 
   
 }
 
 
-# ondas anuales
-
 est = c(362,210,006,483,221,001)
-
 
 for(i in est){
   
@@ -89,7 +116,7 @@ aux = ggplot(data = aux2, aes(x = mes)) +
 ggsave(paste(ruta_salidas,"/onda_anual",".jpg",sep =""), plot = aux, width = 18, height = 13  , units = "cm")
 
 
-L.8 = Lund(data = datos[,-c(1,2,3)], rc = 0.8)
+L.8 = Lund(data = datos[,-c(1,2,3)], rc = 0.85)
 
 L.3 = Lund(data = datos[,-c(1,2,3)], rc = 0.3)
 #
@@ -100,28 +127,57 @@ df <- interp(x = datos$lon,
              y =  datos$lat,
              z =  datos[,L.8[1,1]], extrap = FALSE)
 
-FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
-          escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
-          type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = T, na.fill = -100000
-          , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = "T.1_oct"
-          , titulo = "T1 - Octubre", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+library(fields)
+aux.breaks <- seq(0, 250, 25) # Definir los umbrales para graficar
+colores <- rep(rev(brewer.pal(10, "Spectral")), each = 1) # Barra de colores
+
+outline <- map("world", regions = "Argentina", 
+               exact = TRUE, plot = FALSE)
+
+xrange <- range(outline$x, na.rm = TRUE) # Veo los límites de las coordenadas.
+yrange <- range(outline$y, na.rm = TRUE)
+xbox <- xrange + c(-2, 2)
+ybox <- yrange + c(-2, 2)
+subset <- !is.na(outline$x)
+
+jpeg("diciembre.jpg", pointsize = 12, res = 115, bg = "white")
+image.plot(df$x, df$y, df$z, col = colores, breaks = aux.breaks, 
+           ylab = "Latitud", xlab = "Longitud", 
+           lab.breaks = aux.breaks, legend.shrink = 1, 
+           xlim = c(min(df$x)-2, max(df$x)+2), ylim = c(min(df$y)-2, max(df$y)+2)) 
+title ("Diciembre")
+
+contour(df$x, df$y, df$z, col = "black", add = TRUE, levels = seq(0, 250, 25), ltw=1.4)
+
+polypath(c(outline$x[subset], NA, c(xbox, rev(xbox))),
+         c(outline$y[subset], NA, rep(ybox, each=2)),
+         col = "white", rule = "evenodd", border = NA)
+
+map(database = "world", add = TRUE, lwd = 0.5, col = "black")
+graphics.off()
 
 
-df <- interp(x = datos$lon,
-             y =  datos$lat,
-             z =  datos[,L.8[2,1]], extrap = FALSE)
 
-FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
-          escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
-          type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
-          , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = "T.2_Dic"
-          , titulo = "T2 - Dic", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+# FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
+#           escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
+#           type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
+#           ,save = T, colorbar = "YlGnBu", nombre.fig = "T.1_oct"
+#           , titulo = "T1 - Octubre", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
+
+# 
+# df <- interp(x = datos$lon,
+#              y =  datos$lat,
+#              z =  datos[,L.8[2,1]], extrap = FALSE)
+# 
+# FieldPlot(field = df[[3]], lon = df[[1]], lat = df[[2]], mapa = "argentina",
+#           escala = seq(0, 250, by = 25), revert.brewer = F, sig = F, v.sig = corr[[2]],
+#           type.sig = "tile", color.sig = "white", size.point = 0.1, contour.fill = F, na.fill = -100000
+#           , contorno = F, nivel.cont = corr[[2]],save = T, colorbar = "YlGnBu", nombre.fig = "T.2_Dic"
+#           , titulo = "T2 - Dic", salida = "/P4/SalidasP4/", height = 10, width = 10, mostrar = F)
 
 
 
 ## 2
-#
-
 source("funciones.R")
 library(akima)
 library(xlsx)
@@ -134,7 +190,7 @@ source("funciones.R")
 datos2 = datos
 
 for(i in 1:15){
-  datos2[,i] = datos[,i] - colMeans(datos)[i]  # ?????? xq da igual?
+  datos2[,i] = datos[,i] -apply(datos, c(2), mean)[i]  # ?????? xq da igual?
 }
 
 datos2 = datos[,4:15] - 74.5
@@ -187,12 +243,6 @@ PlotCP(cp = cps, datos.obs = aux2, type.sig = "scree"
   )
 
 
-
-
-
-
-
-
 #########################################################################################################################
 # ej clase
 # practica 4
@@ -223,7 +273,7 @@ for(i in 1:6){
          , step.obs = .4, step = 20, step.a = 1, step.cp = .4
          , tile = T, x.lim = 10
          , breaks.lon = seq(-80, 30 , by = 10)
-         , breaks.lat = seq(-55, -20, by = 10)
+         , breaks.lat = seq(-60, -0, by = 10)
          , width = 35)
   
 }

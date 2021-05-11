@@ -94,8 +94,8 @@ biserial.test = function(tabla, intervalos, alpha){
     print(paste("NO rechazo H0 con un ", (1-alpha)*100, "% de confianza", sep = ""), quote = F)
   }
   
-  result = c(rb, sigmab, est)
-  names(result) = c("Rb", "Sigma b", "Estadistico")
+  result = c(rb, sigmab, est, zc)
+  names(result) = c("Rb", "Sigma b", "Estadistico", "Z.critico")
   
   return(result)
   
@@ -157,8 +157,8 @@ tetracor_test = function(tabla, alpha){
     print(paste("NO rechazo H0 con un ", (1-alpha)*100, "% de confianza", sep = ""), quote = F)
   }
   
-  result = c(rt, se, est)
-  names(result) = c("Rt", "Sigma e", "Estadistico")
+  result = c(rt, se, est, zc)
+  names(result) = c("Rt", "Sigma e", "Estadistico", "Z.critico")
   
   return(result)
   
@@ -168,7 +168,7 @@ tetracor_test = function(tabla, alpha){
 
 #### tabla de contingencia ####
 
-ctg_test = function(tabla, alpha, totales = FALSE){
+ctg_test = function(tabla, alpha, totales = FALSE, show.table = F){
   
   if(!is.data.frame(tabla) & !is.matrix(tabla)){
     stop("tabla debe ser un data.frame o una matriz")
@@ -195,8 +195,10 @@ ctg_test = function(tabla, alpha, totales = FALSE){
     tabla_rand[r,] = tot_row[r]*tot_col/total
    
   }
-  print(tabla_rand)
   
+  if(show.table){
+    print(tabla_rand)
+  }
   
   # estadistico chi-sq
   est = sum(((tabla - tabla_rand)**2)/tabla_rand)
@@ -245,13 +247,13 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
   library(RColorBrewer)            
   library(metR) 
   require(fields)
-  
+  library(maptools)
   # si falla algo:
   #library(maps)
   #require(mapdata)
   #library(mapproj)
   #library(sp)
-  #library(maptools)
+  
   
   ruta = getwd()
   
@@ -293,7 +295,7 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
       # Lo convierto en un objeto de clase "SpatialPolygons": 
       sp.arg <- map2SpatialPolygons(outline.arg, IDs=IDs, proj4string=CRS("+proj=longlat +datum=WGS84"))
       
-      
+      resta.lon = 0
       # Convierto al data.frame "df1" 
       # en un objeto de clase "SpatialPolygons":
       # IMPORTANTE: Debe tener la misma proyección que "sp.arg". 
@@ -444,51 +446,6 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
             scale_fill_stepsn(limits = escala.limites, name = label.escala
                               , colours = brewer.pal(n=n.colors , colorbar)
                               , na.value = "white", breaks = escala,
-                              guide = guide_colorbar(barwidth = cb.w
-                                                     , barheight = cb.h
-                                                     , title.position = "top"
-                                                     , title.hjust = 0.5
-                                                     , raster = F, ticks = T
-                                                     , label.theme = element_text(size = cb.size)))
-          
-        } else if(contour.fill == F & tile == T){
-          
-          g =  g + geom_tile(aes(fill = V3), na.rm = T) + 
-            scale_fill_stepsn(limits = escala.limites, name = label.escala
-                              , colours = brewer.pal(n=n.colors , colorbar)
-                              , na.value = "white", breaks = escala
-                              , guide = guide_colorbar(barwidth = cb.w
-                                                       , barheight = cb.h
-                                                       , title.position = "top"
-                                                       , title.hjust = 0.5
-                                                       , raster = F, ticks = T
-                                                       , label.theme = element_text(size = cb.size)))
-          
-        } else if(contour.fill == T & tile == F){
-          
-          g =  g +
-            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3)
-                              ,alpha = 1, na.fill = na.fill , breaks = escala) +
-            scale_fill_stepsn(limits = escala.limites, name = label.escala
-                              , colours = brewer.pal(n=n.colors , colorbar)
-                              , na.value = "white", breaks = escala,
-                              guide = guide_colorbar(barwidth = cb.w
-                                                     , barheight = cb.h
-                                                     , title.position = "top"
-                                                     , title.hjust = 0.5
-                                                     , raster = F, ticks = T
-                                                     , label.theme = element_text(size = cb.size)))
-        }
-      } else{
-        
-        if(contour.fill & tile){
-          
-          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
-            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3)
-                              ,alpha = 1, na.fill = na.fill , breaks = escala) +
-            scale_fill_stepsn(limits = escala.limites, name = label.escala
-                              , colours = brewer.pal(n=n.colors , colorbar)
-                              , na.value = "white", breaks = escala,
                               guide = guide_colorbar(barwidth = cb.h
                                                      , barheight = cb.w
                                                      , title.position = "top"
@@ -498,7 +455,7 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
           
         } else if(contour.fill == F & tile == T){
           
-          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) + 
             scale_fill_stepsn(limits = escala.limites, name = label.escala
                               , colours = brewer.pal(n=n.colors , colorbar)
                               , na.value = "white", breaks = escala
@@ -519,6 +476,51 @@ FieldPlot = function(field, lon, lat, resta = 0, tile = T, contour.fill = F, na.
                               , na.value = "white", breaks = escala,
                               guide = guide_colorbar(barwidth = cb.h
                                                      , barheight = cb.w
+                                                     , title.position = "top"
+                                                     , title.hjust = 0.5
+                                                     , raster = F, ticks = T
+                                                     , label.theme = element_text(size = cb.size)))
+        }
+      } else{
+        
+        if(contour.fill & tile){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3)
+                              ,alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w
+                                                     , barheight = cb.h
+                                                     , title.position = "top"
+                                                     , title.hjust = 0.5
+                                                     , raster = F, ticks = T
+                                                     , label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == F & tile == T){
+          
+          g =  g + geom_tile(aes(fill = V3), na.rm = T) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala
+                              , guide = guide_colorbar(barwidth = cb.w
+                                                       , barheight = cb.h
+                                                       , title.position = "top"
+                                                       , title.hjust = 0.5
+                                                       , raster = F, ticks = T
+                                                       , label.theme = element_text(size = cb.size)))
+          
+        } else if(contour.fill == T & tile == F){
+          
+          g =  g +
+            geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3)
+                              ,alpha = 1, na.fill = na.fill , breaks = escala) +
+            scale_fill_stepsn(limits = escala.limites, name = label.escala
+                              , colours = brewer.pal(n=n.colors , colorbar)
+                              , na.value = "white", breaks = escala,
+                              guide = guide_colorbar(barwidth = cb.w
+                                                     , barheight = cb.h
                                                      , title.position = "top"
                                                      , title.hjust = 0.5
                                                      , raster = F, ticks = T
@@ -668,16 +670,24 @@ corr_simple = function(matriz, serie, cf){
 #### Lund ####
 Lund = function(data, rc){
   
-  aux = cor(data)
-  diag(aux) = NA
+  aux = cor(data) # matriz de correlacion
+  diag(aux) = NA # saco los valores de la diagonal
   
-  aux[which(abs(aux)<rc)] = NA  
+  aux[which(abs(aux)<rc)] = NA  # me quedo solo con los valores mayores al rc elegido
+  print("#############################################################")
+  print("Matriz de correlación donde r supera el Rc")
+  print(aux)
+  # tabla donde se guardaran los datos
+  # fila 1. variable TIPO, columnas: GRUPÒ
+  # resto de filas -{1}: integrantes del grupo 
+  # todo guardado como numero de fila (tiempos, en modo T)
+  tabla = matrix(data = NA, nrow = ncol(aux), ncol = ncol(aux)) 
   
-  tabla = matrix(data = NA, nrow = ncol(aux), ncol = ncol(aux))
-  g.x = 1:10
-  t = 1
-  while(length(which(!is.na(aux))) >= 1){
+  # si en la matriz de corr hay datos que no son NA, i.e, mayores o iguales a rc repite lo siguiente
+  t = 1 # cantidad de veces que se realiza la motodologia
+  while(length(which(!is.na(aux))) >= 1){ 
     
+    # cantidad de casos significativos (r > rc) por columna
     l = vector()
     for(i in 1:ncol(aux)){
       
@@ -685,41 +695,31 @@ Lund = function(data, rc){
       
     }
     
-    t.x = which(l == max(l))
+    t.x = which(l == max(l)) # la/s columnas con mayor cantidad de casos significativos
     
-    if(length(t.x)>1){
-      
-      if(t == 1){
-        print(aux[,t.x])
-        print(t.x)
-      } else {
-        print(aux)
-      }
-      
-      
-      t.x = as.numeric(readline(paste("Tipo ", t, "?: ", sep = "")))
-      
-    }
-    
-    
-    g.x = which(!is.na(aux[,t.x]))
-    
-    print(paste("Tipo", t, t.x))
-    print(paste("Grupo", t))
-    print(g.x)
+    # criterio de eleccion de la practica (el tiempo mas nuevo/antiguo.... el de mas a la derecha)
+    t.x = max(t.x) # DEFINE TIPO
+   
+    g.x = which(!is.na(aux[,t.x])) # DEFINE GRUPO
+    print("#############################################################")
+    print(paste("Variable Tipo", t, ":", t.x))
+    print(paste("Grupo:", t))
+    print(g.x) # integrantes del grupo 1
+    print("#############################################################")
     tabla[1,t] = t.x 
     tabla[2:(length(g.x)+1),t] = g.x
     
-    #residual
+    #mattriz de corr. residual
+    # reemplaza con "NA" todos los integrantes del grupo1
     aux[c(g.x,t.x),] = NA
     aux[,c(g.x,t.x)] = NA
+    print("#############################################################")
+    print("Matriz Residual")
     print(aux)
-    
-    readline("continuar?")
     
     t = t + 1
   }
-  
+  print(t-1)
   return(tabla)
 }
 

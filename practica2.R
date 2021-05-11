@@ -17,6 +17,8 @@ r = cor.test(x,y, alternative = "two.side", method = "pearson", conf.level = .95
 # H0: r pertenece a una poblacion con rho = 0
 # H1: r NO... etc
 #alpha = 0.05
+# t = r * sqrt((n-2)/(1-r**2))
+# qt(p = 0.95, df = n-2)
 
 # pearson 
 r$estimate
@@ -24,7 +26,7 @@ r$estimate
 #p.value
 r$p.value
 
-# p.vale > 0.05, no rechazo H0. r no significativamente distinto de cero con un 95% de confianza
+# p.value > 0.05, no rechazo H0. r no significativamente distinto de cero con un 95% de confianza
 
 x = c(x, x1)
 y = c(y, y1)
@@ -59,6 +61,7 @@ r2$estimate
 #p.value
 r2$p.value # reachazo H0, r es significicativamente distinto de cero con un 95% de confianza
 
+#etc
 
 ##### E2 #####
 
@@ -146,7 +149,7 @@ t = r$estimate*sqrt((length(datos[,1])-2)/(1-r$estimate**2))
 
 t.teor = qt(p = .95, df = length(datos[,1])-2, lower.tail = F)
 
-t < t.teor # |t| > |t.teor| rechazo H0.. etc
+abs(t) > abs(t.teor) # |t| > |t.teor| rechazo H0.. etc
 
 ##### E5 #####
 
@@ -187,14 +190,3 @@ plot(x = datos[,4], y = datos[,6])
 recta =recta.reg(x = datos[,4], y = datos[,6], plot = T, Summary = T)
 # significativa.
 
-
-##### E8 ####
-
-boya = as.data.frame(read.xlsx(paste(ruta_datos, "Datos_SST_ej8_P2.xlsx", sep = ""), sheetIndex = 1,startRow = 2))
-ers = as.data.frame(read.xlsx(paste(ruta_datos, "Datos_SST_ej8_P2.xlsx", sep = ""), sheetIndex = 2,startRow = 2))
-had = as.data.frame(read.xlsx(paste(ruta_datos, "Datos_SST_ej8_P2.xlsx", sep = ""), sheetIndex = 3,startRow = 2))
-
-# periodo en comun, el de la boya
-
-ers = ers[min(which(ers$Año == min(boya$Año))):max(which(ers$Año == max(boya$Año))),]
-had = had[min(which(had$Año == min(boya$Año))):max(which(had$Año == max(boya$Año))),]

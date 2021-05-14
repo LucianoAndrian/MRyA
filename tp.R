@@ -5,8 +5,6 @@ ruta_salidas = "/home/auri/Facultad/Doc/Materias/MRyA/Practicas/TP/Salidas/"
 
 datos = as.data.frame(read.table(paste(ruta_datos, "Datos_SST.txt", sep = ""), sep = ";", header = T))
 
-source("funciones.R")
-
 # Anomalias 
 aux = datos[,-c(1,2)]
 anom = aux - rowMeans(aux, na.rm = T)
@@ -14,7 +12,7 @@ anom = aux - rowMeans(aux, na.rm = T)
 # cps
 source("funciones.R")
 
-cps = ACP(data = datos2, save = F)
+cps = ACP(data = anom, save = F)
 
 anom.coord = cbind(datos[,c(1,2)], anom)
 
@@ -25,6 +23,7 @@ library(RColorBrewer)
 library(metR) 
 require(fields)
 library(maptools)
+library(akima)
 
 # CPs
 
@@ -40,9 +39,9 @@ limits.lat = c(min(breaks.lat), max(breaks.lat))
 escala = seq(-5, 5, by = 1)
 escala.limites = c(min(escala), max(escala))
 
-aux = cbind(anom.obs[,c(1,2)], cps[[2]])
+aux = cbind(anom.coord[,c(1,2)], cps[[2]])
 
-
+g = list()
 for(cp.draw in 1:4){
  
   df = interp(x = aux[,1],
@@ -116,6 +115,18 @@ for(cp.draw in 1:4){
 
 # los 4 graficos
  ####### 
+cp.draw = 1
+df = interp(x = aux[,1],
+            y = aux[,2],
+            z = aux[,cp.draw+2], extrap = FALSE)
+
+
+lon = df[[1]]
+lat = df[[2]]
+field = df[[3]]
+
+data = expand.grid(lon = lon, lat = lat)
+data[,3] = array(field, dim = length(lon)*length(lat))
 g[[1]] = ggplot(data = data, aes(x = lon, y = lat)) + 
   geom_tile(aes(fill = V3), na.rm = T) +
   geom_contour_fill(data = data, aes(x = lon, y = lat, z = V3), 
@@ -207,6 +218,7 @@ lay <- rbind(c(1,1,1,1,1,1,1,1), c(1,1,1,1,1,1,1,1),
              c(3,3,3,3,3,3,3,3), c(3,3,3,3,3,3,3,3),
              c(4,4,4,4,4,4,4,4), c(4,4,4,4,4,4,4,4))
 
+library(gridExtra)
 p1 = grid.arrange(gpls[[1]], gpls[[2]], gpls[[3]], gpls[[4]],             
                   layout_matrix = lay
                   ) 
